@@ -1,0 +1,5 @@
+streamlit
+qdrant-client
+ollama
+python-dotenv
+pypdf2
