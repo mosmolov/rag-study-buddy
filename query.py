@@ -70,7 +70,6 @@ def query_llm_with_context(context: str, query_text: str) -> str:
             if part.message and part.message.content:
                 content = part.message.content
                 full_response += content
-                print(content, end="", flush=True)
         
         print()  # Add a newline at the end
         return full_response

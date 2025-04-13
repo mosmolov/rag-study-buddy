@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
 from dotenv import load_dotenv
-from utils import chunk_text, generate_embeddings
+from utils import semantically_chunk_text, generate_embeddings
 from config import COLLECTION_NAME
 import os
 from PyPDF2 import PdfReader
@@ -44,7 +44,7 @@ def process_pdf(pdf_reader: PdfReader, collection_name=COLLECTION_NAME, progress
         raise ValueError("No text found in the PDF file.")
 
     # Split text into chunks
-    chunks = chunk_text(pdf_text)
+    chunks = semantically_chunk_text(pdf_text)
     points = []
     
     # Generate embeddings and store in Qdrant
