@@ -6,6 +6,7 @@ from config import COLLECTION_NAME
 import os
 from PyPDF2 import PdfReader
 import uuid
+import logging
 load_dotenv()
 client = QdrantClient(url=os.getenv("QDRANT_URL"),
 api_key=os.getenv("QDRANT_API_KEY"))
@@ -44,33 +45,42 @@ def process_pdf(pdf_reader: PdfReader, collection_name=COLLECTION_NAME, progress
         raise ValueError("No text found in the PDF file.")
 
     # Split text into chunks
+    logging.info("Splitting text into semantically meaningful chunks...")
     chunks = semantically_chunk_text(pdf_text)
+    
+    # Check if chunks is None or empty
+    if chunks is None:
+        raise ValueError("Semantic chunking function returned None. Check the implementation.")
+    
+    if not chunks:
+        raise ValueError("Failed to create text chunks. The document may be empty or in an unsupported format.")
+    
     points = []
     
     # Generate embeddings and store in Qdrant
     for i, chunk in enumerate(chunks):
+        if i < 5:
+            print(f"Chunk {i}: {chunk[:50]}...")
         embedding = generate_embeddings(chunk, is_query=False)
         
         # Store in Qdrant
-        points.append({
+        client.upsert(
+            collection_name=collection_name,
+            points=[{
             "id": str(uuid.uuid4()),
             "vector": embedding,
             "payload": {
                 "text": chunk,
                 "chunk_index": i
             }
-        })
+        }]
+        )
         
         # Update progress for embedding generation (50% to 100%)
         if progress_callback:
             progress_callback(0.5 + 0.5 * (i + 1) / len(chunks), "Generating embeddings")
-    
-    if points:
-        client.upsert(
-            collection_name=collection_name,
-            points=points
-        )
-    return len(points)
+        
+    return len(chunks)
 
 # clear database
 def clear_database(collection_name="documents"):
