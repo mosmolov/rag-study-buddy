@@ -1,7 +1,7 @@
 from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
 from dotenv import load_dotenv
-import ollama
+from utils import chunk_text, generate_embeddings
 import os
 from PyPDF2 import PdfReader
 import uuid
@@ -39,39 +39,26 @@ def process_pdf(pdf_reader: PdfReader, collection_name="documents", chunk_size=1
 
     # Split text into chunks
     chunks = chunk_text(pdf_text, chunk_size)
-
+    points = []
     # Generate embeddings and store in Qdrant
     for i, chunk in enumerate(chunks):
-        embedding = generate_embeddings(chunk)
+        embedding = generate_embeddings(chunk, is_query=False)
         
         # Store in Qdrant
+        points.append({
+            "id": str(uuid.uuid4()),
+            "vector": embedding,
+            "payload": {
+                "text": chunk,
+                "chunk_index": i
+            }
+        })
+    if points:
         client.upsert(
             collection_name=collection_name,
-            points=[
-                {
-                    "id": str(uuid.uuid4()),
-                    "vector": embedding,
-                    "payload": {
-                        "text": chunk,
-                        "chunk_index": i
-                    }
-                }
-            ]
+            points=points
         )
-
-    return len(chunks)
-
-# generate chunks of text
-def chunk_text(text, chunk_size=1000):
-    """Splits text into chunks of a specified size."""
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
-
-# generate embeddings
-def generate_embeddings(text):
-    """Generates embeddings for the given text using the Ollama model."""
-    # Use the Ollama model to generate embeddings
-    response = ollama.embeddings(model='nomic-embed-text', prompt=text)
-    return response['embedding']
+    return len(points)
 
 # clear database
 def clear_database(collection_name="documents"):
