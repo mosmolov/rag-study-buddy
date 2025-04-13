@@ -9,39 +9,70 @@ def main():
     st.title("PDF Uploader")
     st.write("Upload a PDF file to view its content")
     
-    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
+    uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", accept_multiple_files=True)
     
-    if uploaded_file is not None:
-        # Display file details
-        file_details = {"Filename": uploaded_file.name, "File size": uploaded_file.size}
-        st.write(file_details)
+    if uploaded_file:
+        for file in uploaded_file:
+            # Display file details
+            st.subheader(f"File: {file.name}")
+            file_details = {"Filename": file.name, "File size": file.size}
+            st.write(file_details)
+            
+            # Read PDF content
+            try:
+                pdf_reader = PyPDF2.PdfReader(io.BytesIO(file.read()))
+                num_pages = len(pdf_reader.pages)
+                st.write(f"Number of pages: {num_pages}")
+                
+                # Display text from the first few pages
+                text = ""
+                for page_num in range(min(5, num_pages)):
+                    page = pdf_reader.pages[page_num]
+                    text += page.extract_text() + "\n\n"
+                
+                st.subheader("PDF Content (first few pages)")
+                st.text_area(f"Text from {file.name}", text, height=300)
+                
+                # Reset file pointer for processing
+                file.seek(0)
+                
+            except Exception as e:
+                st.error(f"Error reading PDF: {e}")
         
-        # Read PDF content
-        try:
-            pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
-            num_pages = len(pdf_reader.pages)
-            st.write(f"Number of pages: {num_pages}")
-            
-            # Display text from the first few pages
-            text = ""
-            for page_num in range(min(5, num_pages)):
-                page = pdf_reader.pages[page_num]
-                text += page.extract_text() + "\n\n"
-            
-            st.subheader("PDF Content (first few pages)")
-            st.text_area("Text", text, height=300)
-            
-        except Exception as e:
-            st.error(f"Error reading PDF: {e}")
-            
+        # Process and clear buttons
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("Process PDF"):
-                process_pdf(pdf_reader, collection_name="documents", chunk_size=1000)
-                # Display success message
-                st.success("PDF processed and stored in Qdrant database.")
-                # Set a session state flag to indicate processing is done
-                st.session_state.pdf_processed = True
+            if st.button("Process PDFs"):
+                # Create a progress bar
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Callback function to update progress
+                def update_progress(progress_value, status):
+                    progress_bar.progress(progress_value)
+                    status_text.text(f"{status}: {int(progress_value * 100)}% complete")
+                
+                try:
+                    total_chunks = 0
+                    # Process each PDF
+                    for file in uploaded_file:
+                        file.seek(0)  # Reset file pointer
+                        pdf_reader = PyPDF2.PdfReader(io.BytesIO(file.read()))
+                        num_chunks = process_pdf(pdf_reader, collection_name="documents", progress_callback=update_progress)
+                        total_chunks += num_chunks
+                    
+                    # Complete the progress
+                    progress_bar.progress(1.0)
+                    status_text.text(f"Processing complete! Processed {total_chunks} text chunks from {len(uploaded_file)} files.")
+                    
+                    # Display success message
+                    st.success("All PDFs processed and stored in Qdrant database.")
+                    # Set a session state flag to indicate processing is done
+                    st.session_state.pdf_processed = True
+                except Exception as e:
+                    st.error(f"Error processing PDFs: {e}")
+                    progress_bar.empty()
+                    status_text.empty()
         
         with col2:
             if st.button("Clear Database"):
@@ -60,7 +91,7 @@ def main():
     if st.button("Search") and query:
         with st.spinner("Searching for relevant information..."):
             # Retrieve context from the database
-            search_results = query_collection(collection_name="documents", query_text=query, limit=3)
+            search_results = query_collection(query_text=query)
             
             if search_results:
                 # Extract text from the results to use as context

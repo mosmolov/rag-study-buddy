@@ -6,12 +6,13 @@ import os
 from typing import List, Dict
 import asyncio 
 from ollama import AsyncClient
+from config import LLM_MODEL, RETRIEVAL_LIMIT, COLLECTION_NAME
 load_dotenv()
 
 client = QdrantClient(url=os.getenv("QDRANT_URL"),
                       api_key=os.getenv("QDRANT_API_KEY"))
 
-def query_collection(collection_name: str, query_text: str, limit: int = 5) -> List[Dict]:
+def query_collection(query_text: str, collection_name: str=COLLECTION_NAME) -> List[Dict]:
     """
     Query the Qdrant collection for similar text chunks.
 
@@ -30,7 +31,7 @@ def query_collection(collection_name: str, query_text: str, limit: int = 5) -> L
     results = client.search(
         collection_name=collection_name,
         query_vector=embedding,
-        limit=limit,
+        limit=RETRIEVAL_LIMIT,
     )
 
     # Extract and return the results
@@ -63,7 +64,7 @@ def query_llm_with_context(context: str, query_text: str) -> str:
         full_response = ""
         async for part in await AsyncClient().chat(
             messages=[{"role": "user", "content": prompt}],
-            model="deepseek-r1:1.5b",
+            model=LLM_MODEL,
             stream=True
         ):
             if part.message and part.message.content:

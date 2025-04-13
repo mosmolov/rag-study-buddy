@@ -2,6 +2,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import VectorParams, Distance
 from dotenv import load_dotenv
 from utils import chunk_text, generate_embeddings
+from config import COLLECTION_NAME
 import os
 from PyPDF2 import PdfReader
 import uuid
@@ -9,15 +10,15 @@ load_dotenv()
 client = QdrantClient(url=os.getenv("QDRANT_URL"),
 api_key=os.getenv("QDRANT_API_KEY"))
 
-def process_pdf(pdf_reader: PdfReader, collection_name="documents", chunk_size=1000):
+def process_pdf(pdf_reader: PdfReader, collection_name=COLLECTION_NAME, progress_callback=None):
     """
     Takes a PDF file, converts it to chunks, generates embeddings,
     and stores them in the Qdrant database.
 
     Args:
-        pdf_path (str): Path to the PDF file
+        pdf_reader (PdfReader): PDF reader object
         collection_name (str): Name of the collection in Qdrant
-        chunk_size (int): Size of text chunks
+        progress_callback (callable, optional): Function to update progress
     """
     # Create collection if it doesn't exist
     try:
@@ -30,16 +31,22 @@ def process_pdf(pdf_reader: PdfReader, collection_name="documents", chunk_size=1
 
     # Extract text from PDF
     pdf_text = ""
-    for page in pdf_reader.pages:
+    
+    # Show progress during text extraction
+    total_pages = len(pdf_reader.pages)
+    for i, page in enumerate(pdf_reader.pages):
         pdf_text += page.extract_text() + "\n\n"
+        if progress_callback:
+            progress_callback(0.5 * (i + 1) / total_pages, "Extracting text")
+            
     # Check if text extraction was successful
     if not pdf_text.strip():
         raise ValueError("No text found in the PDF file.")
-    
 
     # Split text into chunks
-    chunks = chunk_text(pdf_text, chunk_size)
+    chunks = chunk_text(pdf_text)
     points = []
+    
     # Generate embeddings and store in Qdrant
     for i, chunk in enumerate(chunks):
         embedding = generate_embeddings(chunk, is_query=False)
@@ -53,6 +60,11 @@ def process_pdf(pdf_reader: PdfReader, collection_name="documents", chunk_size=1
                 "chunk_index": i
             }
         })
+        
+        # Update progress for embedding generation (50% to 100%)
+        if progress_callback:
+            progress_callback(0.5 + 0.5 * (i + 1) / len(chunks), "Generating embeddings")
+    
     if points:
         client.upsert(
             collection_name=collection_name,
