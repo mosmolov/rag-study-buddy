@@ -31,17 +31,6 @@ def query_collection(collection_name: str, query_text: str, limit: int = 5) -> L
         collection_name=collection_name,
         query_vector=embedding,
         limit=limit,
-        filter=Filter(
-            must=[
-                FieldCondition(
-                    key="text",
-                    match=MatchText(
-                        text=query_text,
-                        fuzzy=False
-                    )
-                )
-            ]
-        )
     )
 
     # Extract and return the results
