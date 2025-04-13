@@ -3,3 +3,6 @@ qdrant-client
 ollama
 python-dotenv
 pypdf2
+scikit-learn
+numpy
+nltk

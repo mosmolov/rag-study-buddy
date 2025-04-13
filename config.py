@@ -5,4 +5,4 @@ COLLECTION_NAME = "documents"
 RETRIEVAL_LIMIT = 5
 
 EMBEDDING_MODEL = "nomic-embed-text"
-LLM_MODEL = "deepseek-r1:1.5b"
+LLM_MODEL = "deepseek-r1:8b"

@@ -12,6 +12,7 @@ def main():
     uploaded_file = st.file_uploader("Choose a PDF file", type="pdf", accept_multiple_files=True)
     
     if uploaded_file:
+        st.info(f"📄 {len(uploaded_file)} file(s) uploaded")
         for file in uploaded_file:
             # Display file details
             st.subheader(f"File: {file.name}")
@@ -86,7 +87,7 @@ def main():
     st.subheader("Query Your Documents")
     
     # Text input for user query
-    query = st.text_input("Enter your question about the document:")
+    query = st.text_area("Enter your question about the document:")
     
     if st.button("Search") and query:
         with st.spinner("Searching for relevant information..."):
