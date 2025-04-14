@@ -43,8 +43,8 @@ nltk
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/pdf-rag.git
-   cd pdf-rag
+   git clone https://github.com/mosmolov/rag-study-buddy.git
+   cd rag-study-buddy
    ```
 
 2. Set up a virtual environment (optional but recommended):
