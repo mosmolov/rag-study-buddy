@@ -111,7 +111,7 @@ def main():
                 final_answer = response.replace(f"<think>{reasoning}</think>", "").strip()
                 
                 response_placeholder.markdown("Final Answer:")
-                st.markdown(final_answer)
+                st.latex(final_answer)
                 
                 # Optionally show the supporting evidence
                 with st.expander("View supporting context"):

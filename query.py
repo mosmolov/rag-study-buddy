@@ -52,6 +52,8 @@ def query_llm_with_context(context: str, query_text: str, stream_callback=None) 
     Returns:
         str: LLM response
     """
+     # retrieve augmented llm query
+    augmented_query = augment_llm_query(query_text)
     # Combine context and query for the LLM
     prompt = f"""
         <instruction>
@@ -67,7 +69,8 @@ def query_llm_with_context(context: str, query_text: str, stream_callback=None) 
         <instruction>
         Your answer should ONLY be drawn from the provided search results above, never include answers outside of the search results provided.
         When you reply, first find exact quotes in the context relevant to the user's question and write them down word for word inside <thinking></thinking> XML tags. This is a space for you to write down relevant content and will not be shown to the user. Once you are done extracting relevant quotes, answer the question.  Put your answer to the user inside <answer></answer> XML tags.
-        <instruction>
+        If the question requires mathematical calculations, you can use the information in the context to perform the calculations.
+        </instruction>
 
         <instruction>
         Pertaining to the human's question in the "question" tags:
@@ -82,6 +85,8 @@ def query_llm_with_context(context: str, query_text: str, stream_callback=None) 
         {query_text}
         </question>
     """
+    augmented_prompt = f"{prompt}\n{augmented_query}"
+    
     response = ""
     # query ollama llm
     async def ollama_stream_response(prompt: str) -> str:
@@ -101,10 +106,31 @@ def query_llm_with_context(context: str, query_text: str, stream_callback=None) 
     
     if stream_callback:
         # Use asyncio to run the async function
-        return asyncio.run(ollama_stream_response(prompt))
+        return asyncio.run(ollama_stream_response(augmented_prompt))
     else:
         response = Client().chat(
-        messages=[{"role": "user", "content": prompt}],
+        messages=[{"role": "user", "content": augmented_prompt}],
         model=LLM_MODEL
         )
         return response['message']['content'] if response and 'message' in response else ""
+    
+
+def augment_llm_query(query_text: str):
+    """
+    Augment the LLM query with sample answers
+
+    Args:
+        query_text (str): Original user question
+    """
+    prompt = """
+    You are a <persona>Academic Scholar</persona> conversational AI. Provide an example answer to the given question, that might be found in a document like a textbook: {query_text}
+    """
+    response = Client().chat(
+        messages=[{"role": "user", "content": query_text}],
+        model=LLM_MODEL,
+        stream=False
+    )
+    
+    return response['message']['content'] if response and 'message' in response else ""
+    
+        
